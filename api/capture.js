@@ -30,17 +30,22 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      console.log('Raw body:', req.body);
+      console.log('=== POST REQUEST STARTED ===');
+      console.log('Raw body:', JSON.stringify(req.body));
       console.log('Body type:', typeof req.body);
        
        const { text, apiKey } = req.body;
        console.log('Text extracted:', text);
 
       if (!text) {
-        return res.status(400).json({ success: false, error: 'Text is required' });
+        console.log('ERROR: No text provided');
+         return res.status(400).json({ success: false, error: 'Text is required' });
       }
 
-      const categorized = await categorizeWithAI(text, apiKey);
+       console.log('About to call categorizeWithAI...');
+     const categorized = await categorizeWithAI(text, apiKey);
+       console.log('Categorization complete:', JSON.stringify(categorized));
+
 
       const newItem = {
         id: Date.now().toString(),
@@ -59,7 +64,10 @@ export default async function handler(req, res) {
       });
 
     } catch (error) {
-      return res.status(500).json({ 
+      console.error('=== ERROR IN POST ===');
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+       return res.status(500).json({ 
         success: false, 
         error: error.message 
       });
