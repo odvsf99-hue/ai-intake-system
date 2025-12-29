@@ -1,8 +1,33 @@
-import { Redis } from '@upstash/redis';
-   const kv = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN,
-});
+// Simple fetch-based Redis client
+const redis = {
+  async get(key) {
+    const res = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/get/${key}`, {
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result;
+  },
+  
+  async set(key, value) {
+    const res = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/set/${key}`, {
+      method: 'POST',
+      headers: { 
+        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(value)
+    });
+    return res.json();
+  },
+  
+  async keys(pattern) {
+    const res = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/keys/${pattern}`, {
+      headers: { Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}` }
+    });
+    const data = await res.json();
+    return data.result || [];
+  }
+};
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,10 +40,10 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const keys = await kv.keys('item:*');
+      const keys = await redis.keys('item:*');
       const items = await Promise.all(
         keys.map(async (key) => {
-          const item = await kv.get(key);
+          const item = await redis.get(key);
           return item;
         })
       );
@@ -33,22 +58,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      console.log('=== POST REQUEST STARTED ===');
-      console.log('Raw body:', JSON.stringify(req.body));
-      console.log('Body type:', typeof req.body);
-       
-       const { text, apiKey } = req.body;
-       console.log('Text extracted:', text);
+      const { text, apiKey } = req.body;
 
       if (!text) {
-        console.log('ERROR: No text provided');
-         return res.status(400).json({ success: false, error: 'Text is required' });
+        return res.status(400).json({ success: false, error: 'Text is required' });
       }
 
-       console.log('About to call categorizeWithAI...');
-     const categorized = await categorizeWithAI(text, apiKey);
-       console.log('Categorization complete:', JSON.stringify(categorized));
-
+      const categorized = await categorizeWithAI(text, apiKey);
 
       const newItem = {
         id: Date.now().toString(),
@@ -58,7 +74,7 @@ export default async function handler(req, res) {
         ...categorized
       };
 
-      await kv.set(`item:${newItem.id}`, newItem);
+      await redis.set(`item:${newItem.id}`, newItem);
 
       return res.status(200).json({ 
         success: true, 
@@ -67,10 +83,7 @@ export default async function handler(req, res) {
       });
 
     } catch (error) {
-      console.error('=== ERROR IN POST ===');
-      console.error('Error message:', error.message);
-      console.error('Error stack:', error.stack);
-       return res.status(500).json({ 
+      return res.status(500).json({ 
         success: false, 
         error: error.message 
       });
