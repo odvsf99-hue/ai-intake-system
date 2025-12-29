@@ -44,7 +44,7 @@ export default async function handler(req, res) {
       const items = await Promise.all(
         keys.map(async (key) => {
           const item = await redis.get(key);
-          return item;
+          return typeof item === 'string'?;
         })
       );
       return res.status(200).json({ 
