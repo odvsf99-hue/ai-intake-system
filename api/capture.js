@@ -30,7 +30,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'POST') {
     try {
-      const { text, apiKey } = req.body;
+      console.log('Raw body:', req.body);
+      console.log('Body type:', typeof req.body);
+       
+       const { text, apiKey } = req.body;
+       console.log('Text extracted:', text);
 
       if (!text) {
         return res.status(400).json({ success: false, error: 'Text is required' });
